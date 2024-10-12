@@ -193,7 +193,7 @@ class ChatGPTTelegramBot:
         """
         Resend the last request
         """
-        if not await is_allowed(self.config, update, context, user_service=self.user_service):
+        if not await is_allowed(self.config, update, context, self.user_service):
             logging.warning(f'User {update.message.from_user.name}  (id: {update.message.from_user.id})'
                             ' is not allowed to resend the message')
             await self.send_disallowed_message(update, context)
@@ -1056,7 +1056,7 @@ class ChatGPTTelegramBot:
         name = update.inline_query.from_user.name if is_inline else update.message.from_user.name
         user_id = update.inline_query.from_user.id if is_inline else update.message.from_user.id
 
-        if not await is_allowed(self.config, update, context, is_inline=is_inline):
+        if not await is_allowed(self.config, update, context, self.user_service, is_inline=is_inline):
             logging.warning(f'User {name} (id: {user_id}) is not allowed to use the bot')
             await self.send_disallowed_message(update, context, is_inline)
             return False
