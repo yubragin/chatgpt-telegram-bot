@@ -11,6 +11,7 @@ import telegram
 from telegram import Message, MessageEntity, Update, ChatMember, constants
 from telegram.ext import CallbackContext, ContextTypes
 
+from bot.user_service import UserService
 from usage_tracker import UsageTracker
 
 
@@ -148,20 +149,24 @@ async def error_handler(_: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     logging.error(f'Exception while handling an update: {context.error}')
 
 
-async def is_allowed(config, update: Update, context: CallbackContext, is_inline=False) -> bool:
+async def is_allowed_for_admin(config, update: Update, is_inline=False) -> bool:
+    user_id = update.inline_query.from_user.id if is_inline else update.message.from_user.id
+    if is_admin(config, user_id):
+        return True
+
+
+async def is_allowed(config, update: Update, context: CallbackContext, user_service: UserService, is_inline=False) -> bool:
     """
     Checks if the user is allowed to use the bot.
     """
-    if config['allowed_user_ids'] == '*':
-        return True
 
     user_id = update.inline_query.from_user.id if is_inline else update.message.from_user.id
     if is_admin(config, user_id):
         return True
     name = update.inline_query.from_user.name if is_inline else update.message.from_user.name
-    allowed_user_ids = config['allowed_user_ids'].split(',')
+    allowed_user_ids = user_service.get_user_ids()
     # Check if user is allowed
-    if str(user_id) in allowed_user_ids:
+    if user_id in allowed_user_ids:
         return True
     # Check if it's a group a chat with at least one authorized member
     if not is_inline and is_group_chat(update):
@@ -196,7 +201,7 @@ def is_admin(config, user_id: int, log_no_admin=False) -> bool:
     return False
 
 
-def get_user_budget(config, user_id) -> float | None:
+def get_user_budget(config, user_id, user_service: UserService) -> float | None:
     """
     Get the user's budget based on their user ID and the bot configuration.
     :param config: The bot configuration object
@@ -209,16 +214,10 @@ def get_user_budget(config, user_id) -> float | None:
         return float('inf')
 
     user_budgets = config['user_budgets'].split(',')
-    if config['allowed_user_ids'] == '*':
-        # same budget for all users, use value in first position of budget list
-        if len(user_budgets) > 1:
-            logging.warning('multiple values for budgets set with unrestricted user list '
-                            'only the first value is used as budget for everyone.')
-        return float(user_budgets[0])
 
-    allowed_user_ids = config['allowed_user_ids'].split(',')
-    if str(user_id) in allowed_user_ids:
-        user_index = allowed_user_ids.index(str(user_id))
+    allowed_user_ids = user_service.get_user_ids()
+    if user_id in allowed_user_ids:
+        user_index = allowed_user_ids.index(user_id)
         if len(user_budgets) <= user_index:
             logging.warning(f'No budget set for user id: {user_id}. Budget list shorter than user list.')
             return 0.0
@@ -226,7 +225,7 @@ def get_user_budget(config, user_id) -> float | None:
     return None
 
 
-def get_remaining_budget(config, usage, update: Update, is_inline=False) -> float:
+def get_remaining_budget(config, usage, update: Update, user_service: UserService, is_inline=False) -> float:
     """
     Calculate the remaining budget for a user based on their current usage.
     :param config: The bot configuration object
@@ -248,7 +247,7 @@ def get_remaining_budget(config, usage, update: Update, is_inline=False) -> floa
         usage[user_id] = UsageTracker(user_id, name)
 
     # Get budget for users
-    user_budget = get_user_budget(config, user_id)
+    user_budget = get_user_budget(config, user_id, user_service)
     budget_period = config['budget_period']
     if user_budget is not None:
         cost = usage[user_id].get_current_cost()[budget_cost_map[budget_period]]
@@ -261,7 +260,7 @@ def get_remaining_budget(config, usage, update: Update, is_inline=False) -> floa
     return config['guest_budget'] - cost
 
 
-def is_within_budget(config, usage, update: Update, is_inline=False) -> bool:
+def is_within_budget(config, usage, update: Update, user_service: UserService, is_inline=False) -> bool:
     """
     Checks if the user reached their usage limit.
     Initializes UsageTracker for user and guest when needed.
@@ -275,11 +274,11 @@ def is_within_budget(config, usage, update: Update, is_inline=False) -> bool:
     name = update.inline_query.from_user.name if is_inline else update.message.from_user.name
     if user_id not in usage:
         usage[user_id] = UsageTracker(user_id, name)
-    remaining_budget = get_remaining_budget(config, usage, update, is_inline=is_inline)
+    remaining_budget = get_remaining_budget(config, usage, update, user_service, is_inline=is_inline)
     return remaining_budget > 0
 
 
-def add_chat_request_to_usage_tracker(usage, config, user_id, used_tokens):
+def add_chat_request_to_usage_tracker(usage, config, user_id, used_tokens, user_service: UserService):
     """
     Add chat request to usage tracker
     :param usage: The usage tracker object
@@ -294,8 +293,8 @@ def add_chat_request_to_usage_tracker(usage, config, user_id, used_tokens):
         # add chat request to users usage tracker
         usage[user_id].add_chat_tokens(used_tokens, config['token_price'])
         # add guest chat request to guest usage tracker
-        allowed_user_ids = config['allowed_user_ids'].split(',')
-        if str(user_id) not in allowed_user_ids and 'guests' in usage:
+        allowed_user_ids = user_service.get_user_ids()
+        if user_id not in allowed_user_ids and 'guests' in usage:
             usage["guests"].add_chat_tokens(used_tokens, config['token_price'])
     except Exception as e:
         logging.warning(f'Failed to add tokens to usage_logs: {str(e)}')
@@ -385,6 +384,17 @@ def encode_image(fileobj):
     image = base64.b64encode(fileobj.getvalue()).decode('utf-8')
     return f'data:image/jpeg;base64,{image}'
 
+
 def decode_image(imgbase64):
     image = imgbase64[len('data:image/jpeg;base64,'):]
     return base64.b64decode(image)
+
+
+def string_to_int(s) -> int | None:
+    try:
+        return int(s.strip())
+
+    except ValueError:
+        # If conversion fails, catch the ValueError and print a message
+        logging.warning(f"Conversion failed: '{s}' is not a valid integer representation.")
+        return None

@@ -26,7 +26,7 @@ GPT_3_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-0613")
 GPT_3_16K_MODELS = ("gpt-3.5-turbo-16k", "gpt-3.5-turbo-16k-0613", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-0125")
 GPT_4_MODELS = ("gpt-4", "gpt-4-0314", "gpt-4-0613", "gpt-4-turbo-preview")
 GPT_4_32K_MODELS = ("gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-0613")
-GPT_4_VISION_MODELS = ("gpt-4-vision-preview",)
+GPT_4_VISION_MODELS = ("gpt-4-vision-preview", "gpt-4o",)
 GPT_4_128K_MODELS = ("gpt-4-1106-preview","gpt-4-0125-preview","gpt-4-turbo-preview", "gpt-4-turbo", "gpt-4-turbo-2024-04-09")
 GPT_4O_MODELS = ("gpt-4o",)
 GPT_ALL_MODELS = GPT_3_MODELS + GPT_3_16K_MODELS + GPT_4_MODELS + GPT_4_32K_MODELS + GPT_4_VISION_MODELS + GPT_4_128K_MODELS + GPT_4O_MODELS
@@ -577,6 +577,9 @@ class OpenAIHelper:
         self.conversations[chat_id] = [{"role": "system", "content": content}]
         self.conversations_vision[chat_id] = False
 
+    def get_model(self) -> str:
+        return self.config['model']
+
     def __max_age_reached(self, chat_id) -> bool:
         """
         Checks if the maximum conversation age has been reached.
@@ -715,26 +718,3 @@ class OpenAIHelper:
             return num_tokens
         else:
             raise NotImplementedError(f"""unknown parameter detail={detail} for model {model}.""")
-
-    # No longer works as of July 21st 2023, as OpenAI has removed the billing API
-    # def get_billing_current_month(self):
-    #     """Gets billed usage for current month from OpenAI API.
-    #
-    #     :return: dollar amount of usage this month
-    #     """
-    #     headers = {
-    #         "Authorization": f"Bearer {openai.api_key}"
-    #     }
-    #     # calculate first and last day of current month
-    #     today = date.today()
-    #     first_day = date(today.year, today.month, 1)
-    #     _, last_day_of_month = monthrange(today.year, today.month)
-    #     last_day = date(today.year, today.month, last_day_of_month)
-    #     params = {
-    #         "start_date": first_day,
-    #         "end_date": last_day
-    #     }
-    #     response = requests.get("https://api.openai.com/dashboard/billing/usage", headers=headers, params=params)
-    #     billing_data = json.loads(response.text)
-    #     usage_month = billing_data["total_usage"] / 100  # convert cent amount to dollars
-    #     return usage_month
