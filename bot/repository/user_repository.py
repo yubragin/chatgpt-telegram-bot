@@ -2,8 +2,8 @@ from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from bot.init_sql import session
-from bot.repository.model.user import User
+from init_sql import session
+from repository.model.user import User
 
 
 class UserRepository:

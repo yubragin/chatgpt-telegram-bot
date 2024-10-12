@@ -11,7 +11,7 @@ import telegram
 from telegram import Message, MessageEntity, Update, ChatMember, constants
 from telegram.ext import CallbackContext, ContextTypes
 
-from bot.user_service import UserService
+from user_service import UserService
 from usage_tracker import UsageTracker
 
 

@@ -1,6 +1,6 @@
 import logging
 
-from bot.repository.user_repository import UserRepository
+from repository.user_repository import UserRepository
 
 
 class UserService:

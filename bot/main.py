@@ -3,8 +3,8 @@ import os
 
 from dotenv import load_dotenv
 
-from bot.repository.user_repository import user_repository
-from bot.user_service import UserService
+from repository.user_repository import user_repository
+from user_service import UserService
 from plugin_manager import PluginManager
 from openai_helper import OpenAIHelper, default_max_tokens, are_functions_available
 from telegram_bot import ChatGPTTelegramBot

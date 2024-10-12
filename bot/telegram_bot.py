@@ -15,7 +15,7 @@ from telegram.error import RetryAfter, TimedOut, BadRequest
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, \
     filters, InlineQueryHandler, CallbackQueryHandler, Application, ContextTypes, CallbackContext
 
-from bot.user_service import UserService
+from user_service import UserService
 from openai_helper import OpenAIHelper, localized_text
 from usage_tracker import UsageTracker
 from utils import is_group_chat, get_thread_id, message_text, wrap_with_indicator, split_into_chunks, \
