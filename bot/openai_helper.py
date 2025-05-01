@@ -603,16 +603,16 @@ class OpenAIHelper:
             for key, value in message.items():
                 if key == 'content':
                     if isinstance(value, str):
-                        num_tokens += len(value) / 2
+                        num_tokens += len(value)
                     else:
                         for message1 in value:
                             if message1['type'] == 'image_url':
                                 image = decode_image(message1['image_url']['url'])
                                 num_tokens += self.__count_tokens_vision(image)
                             else:
-                                num_tokens += len(message1['text']) / 2
+                                num_tokens += len(message1['text'])
                 else:
-                    num_tokens += len(value) / 2
+                    num_tokens += len(value)
                     if key == "name":
                         num_tokens += tokens_per_name
         num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
