@@ -67,7 +67,8 @@ class UsageTracker:
             self.usage = {
                 "user_name": user_name,
                 "current_cost": {"day": 0.0, "month": 0.0, "all_time": 0.0, "last_update": str(date.today())},
-                "usage_history": {"chat_tokens": {}, "transcription_seconds": {}, "number_images": {}, "tts_characters": {}, "vision_tokens":{}}
+                "usage_history": {"chat_tokens": {}, "transcription_seconds": {}, "number_images": {},
+                                  "tts_characters": {}, "vision_tokens": {}}
             }
 
     # token usage functions:
@@ -155,7 +156,6 @@ class UsageTracker:
                 usage_month += sum(images)
         return usage_day, usage_month
 
-
     # vision usage functions
     def add_vision_tokens(self, tokens, vision_token_price=0.01):
         """
@@ -207,7 +207,7 @@ class UsageTracker:
 
         if 'tts_characters' not in self.usage['usage_history']:
             self.usage['usage_history']['tts_characters'] = {}
-        
+
         if tts_model not in self.usage['usage_history']['tts_characters']:
             self.usage['usage_history']['tts_characters'][tts_model] = {}
 
@@ -234,18 +234,17 @@ class UsageTracker:
         characters_day = 0
         for tts_model in tts_models:
             if tts_model in self.usage["usage_history"]["tts_characters"] and \
-                str(today) in self.usage["usage_history"]["tts_characters"][tts_model]:
+                    str(today) in self.usage["usage_history"]["tts_characters"][tts_model]:
                 characters_day += self.usage["usage_history"]["tts_characters"][tts_model][str(today)]
 
         month = str(today)[:7]  # year-month as string
         characters_month = 0
         for tts_model in tts_models:
-            if tts_model in self.usage["usage_history"]["tts_characters"]: 
+            if tts_model in self.usage["usage_history"]["tts_characters"]:
                 for today, characters in self.usage["usage_history"]["tts_characters"][tts_model].items():
                     if today.startswith(month):
                         characters_month += characters
         return int(characters_day), int(characters_month)
-
 
     # transcription usage functions:
 
@@ -332,7 +331,8 @@ class UsageTracker:
         cost_all_time = self.usage["current_cost"].get("all_time", self.initialize_all_time_cost())
         return {"cost_today": cost_day, "cost_month": cost_month, "cost_all_time": cost_all_time}
 
-    def initialize_all_time_cost(self, tokens_price=0.002, image_prices="0.016,0.018,0.02", minute_price=0.006, vision_token_price=0.01, tts_prices='0.015,0.030'):
+    def initialize_all_time_cost(self, tokens_price=0.002, image_prices="0.016,0.018,0.02", minute_price=0.006,
+                                 vision_token_price=0.01, tts_prices='0.015,0.030'):
         """Get total USD amount of all requests in history
         
         :param tokens_price: price per 1000 tokens, defaults to 0.002
@@ -356,7 +356,8 @@ class UsageTracker:
         total_vision_tokens = sum(self.usage['usage_history']['vision_tokens'].values())
         vision_cost = round(total_vision_tokens * vision_token_price / 1000, 2)
 
-        total_characters = [sum(tts_model.values()) for tts_model in self.usage['usage_history']['tts_characters'].values()]
+        total_characters = [sum(tts_model.values()) for tts_model in
+                            self.usage['usage_history']['tts_characters'].values()]
         tts_prices_list = [float(x) for x in tts_prices.split(',')]
         tts_cost = round(sum([count * price / 1000 for count, price in zip(total_characters, tts_prices_list)]), 2)
 
